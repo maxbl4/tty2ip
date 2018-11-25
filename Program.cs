@@ -55,6 +55,7 @@ namespace tty2ip
     {
         private readonly Socket socket;
         private readonly SerialPortStream port;
+        private bool run = true;
 
         public Forwader(Socket socket, string portName)
         {
@@ -71,9 +72,15 @@ namespace tty2ip
             try 
             {
                 var buf = new byte[10000];
-                while (true)
+                while (run)
                 {
                     var read = socket.Receive(buf);
+                    if (read == 0)
+                    {
+                        Dispose();
+                        return;
+                    }
+
                     port.Write(buf, 0, read);
                     Console.WriteLine($"IP >> [{read}] >> TTY");
                 }
@@ -90,7 +97,7 @@ namespace tty2ip
             try
             {
                 var buf = new byte[10000];
-                while (true)
+                while (run)
                 {
                     var read = port.Read(buf);
                     socket.Send(buf, 0, read, SocketFlags.None);
@@ -106,6 +113,7 @@ namespace tty2ip
 
         public void Dispose()
         {
+            run = false;
             socket.DisposeSafe();
             port.DisposeSafe();
         }
