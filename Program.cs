@@ -13,15 +13,17 @@ namespace tty2ip
         private static Forwader client;
         static object sync = new object();
         private static string portName;
+        private static int baudRate;
 
         static void Main(string[] args)
         {
-            if (args.Length == 0)
+            if (args.Length < 2)
             {
-                Console.WriteLine("Provide access to serial port over ip. Specify serial port name");
+                Console.WriteLine("Provide access to serial port over ip. Specify serial port name and baud rate");
             }
 
             portName = args[0];
+            baudRate = int.Parse(args[1]);
             listener = new TcpListener(IPAddress.Any, 9999);
             listener.Start();
             var t = AcceptLoop();
@@ -33,14 +35,14 @@ namespace tty2ip
         {
             try
             {
-                Console.WriteLine($"Proxying serial port {portName} to tcp port 9999");
+                Console.WriteLine($"Proxying serial port {portName} at {baudRate} to tcp port 9999");
                 while (true)
                 {
                     var socket = await listener.AcceptSocketAsync();
                     lock (sync)
                     {
                         client?.Dispose();
-                        client = new Forwader(socket, portName);
+                        client = new Forwader(socket, portName, baudRate);
                     }
                 }
             }
@@ -57,10 +59,10 @@ namespace tty2ip
         private readonly SerialPortStream port;
         private bool run = true;
 
-        public Forwader(Socket socket, string portName)
+        public Forwader(Socket socket, string portName, int baudRate)
         {
             Console.WriteLine($"Accepted client");
-            port = new SerialPortStream(portName, 57600, 8, Parity.None, StopBits.One);
+            port = new SerialPortStream(portName, baudRate, 8, Parity.None, StopBits.One);
             port.Open();
             this.socket = socket;
             new Task(RecvLoop, TaskCreationOptions.LongRunning).Start();
